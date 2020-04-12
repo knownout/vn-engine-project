@@ -1,11 +1,12 @@
-namespace Novel {
-	export type DrawableType = "image" | "line" | "rect" | "arc";
-	export type PositioningState = "top" | "center" | "bottom";
-}
+import { ImageLoader, IImageElement } from "./fragments/loaders";
 
 class Core {
 	// TODO: Заменить на защищенный тип (будет наследоваться движком)
 	public readonly canvasContext: CanvasRenderingContext2D;
+	public readonly LoadImage: typeof ImageLoader.prototype.LoadImage;
+
+	private readonly layersList: (IImageElement | null)[] = [];
+
 	public constructor (width: number, height: number) {
 		// Создание холста и установка CSS стилей
 		const canvasElement = document.createElement("canvas");
@@ -21,155 +22,83 @@ class Core {
 		canvasContext.canvas.height = height;
 
 		this.canvasContext = canvasContext;
+
+		// Инициализация загрузчика и добавление функции загрузки к публичным
+		const imageLoader = new ImageLoader(canvasContext);
+		this.LoadImage = imageLoader.LoadImage.bind(imageLoader);
 	}
 
-	public DrawImage (
-		image: HTMLImageElement,
-		// Начальные настройки заданы лишь на центрирование изображения
-		options = {
-			vertical: "center",
-			horizontal: "center"
-		} as {
-			vertical?: Novel.PositioningState;
-			horizontal?: Novel.PositioningState;
+	// Метод управления слоями
+	public get Layers () {
+		// Перерисовывает изображения из всех слоёв
+		const redrawLayers = () => {
+			for (let image of this.layersList) if (image) this.DrawImage(image);
+			return this;
+		};
 
-			// Настрока эффекта для изменения прозрачности изображения
-			effectOptions?: {
-				fn: (
-					from: number,
-					to: number,
-					time: number,
-					callback: (currentValue: number) => void
-				) => Promise<void>;
+		return {
+			// Добавляет новый слой и возвращает его индекс
+			Add: () => {
+				this.layersList.push(null);
+				return this.layersList.length - 1;
+			},
+			Get: (index: number) => this.layersList[index], // Возвращает содержимое слоя
+			// Удаляет указанный слой со сдвигом индексов
+			Remove: (index: number) => {
+				this.layersList.splice(index, 1);
+				return redrawLayers();
+			},
+			// Очищает указанный слой
+			Clean: (index: number) => {
+				this.layersList[index] = null;
+				return redrawLayers();
+			}
+		};
+	}
 
-				// Ручное изменение параметров функции эффекта
-				from?: number; // С какого значения начать
-				to?: number; // Каким значением закончить
-				time?: number; // Общая продолжительность работы функции
-			};
+	public DrawImage (image: IImageElement, layer: number = 0) {
+		// Проверяем, существует ли заданный слой
+		if (this.layersList[layer] === undefined)
+			throw new Error("Layer with given index did not exist");
 
-			// Статичная прозрачность изображения
-			// (не может быть использована вместе с эффектом)
-			opacity?: number;
-		}
-	) {
-		// Получаем размер изображения и отступы относительно холста
-		const { width, height, ...margins } = this.calculateImageCoverSize(image);
+		// Изменяем содержимое слоя на указанное изображение
+		this.layersList[layer] = image;
 
-		// Вычисление отступов относительно типа центрирования
-		const margin = (plane: "vertical" | "horizontal") =>
-			options[plane] == "top"
-				? 0
-				: options[plane] == "center" ? margins[plane == "vertical" ? "left" : "top"] : 0;
+		// Полностью очищаем холст
+		this.canvasContext.clearRect(
+			0,
+			0,
+			this.canvasContext.canvas.width,
+			this.canvasContext.canvas.height
+		);
 
-		// Если не задан эффект, то по возможности устанавливается статичный уровень прозрачности
-		if (options.opacity && !options.effectOptions)
-			this.canvasContext.globalAlpha = options.opacity;
-		if (!options.effectOptions)
-			// Если эффект не установлен, то изображение отрисовывается
+		// Функция для отрисовки изображения на холсте
+		const drawImage = (image: IImageElement) => {
+			this.canvasContext.globalAlpha = image.alpha;
 			this.canvasContext.drawImage(
-				image,
-				margin("vertical"),
-				margin("horizontal"),
-				width,
-				height
+				image.html,
+				image.left,
+				image.top,
+				image.width,
+				image.height
 			);
-		else {
-			// Если нет, то настраивается и запускается эффект
-			// Создание копии начального изображения для перерисовки
-			const beginImage = new Image();
-			beginImage.src = this.canvasContext.canvas.toDataURL();
 
-			// Получение вручную записанных опций эффекта
-			const { fn, ...opacityEffect } = options.effectOptions;
-			let effectOptions = { from: 0, to: 0, time: 0 };
-
-			type T = "from" | "to" | "time";
-			for (const part of [ "from", "to", "time" ])
-				if (opacityEffect[part as T])
-					effectOptions[part as T] = opacityEffect[part as T] as number;
-
-			// Вызов функции эффекта
-			fn(effectOptions.from, effectOptions.to, effectOptions.time, currentValue => {
-				// Очистка холста и отрисовка начального изображения
-				this.canvasContext.globalAlpha = 1;
-				this.canvasContext.clearRect(
-					0,
-					0,
-					this.canvasContext.canvas.width,
-					this.canvasContext.canvas.height
-				);
-
-				this.canvasContext.drawImage(beginImage, 0, 0);
-
-				// Установка заданного уровня прозрачности и
-				// отрисовка текущего изображения
-				this.canvasContext.globalAlpha = currentValue;
-				this.canvasContext.drawImage(
-					image,
-					margin("vertical"),
-					margin("horizontal"),
-					width,
-					height
-				);
-			});
-		}
-	}
-
-	private calculateImageCoverSize (image: HTMLImageElement) {
-		const canvas = {
-			width: this.canvasContext.canvas.width,
-			height: this.canvasContext.canvas.height
+			this.canvasContext.globalAlpha = 1;
 		};
 
-		// Соотношение сторон по типу 1:(высота / ширина)
-		const relation = {
-			canvas: canvas.width / canvas.height,
-			image: image.naturalWidth / image.naturalHeight
-		};
+		// Создание копии массива слоёв и удаление из этой копии текущего слоя
+		const localLayersList = [ ...this.layersList ];
+		localLayersList.splice(layer, 1);
 
-		let nextImageProps = { width: 0, height: 0, top: 0, left: 0 };
-		function alignWithHeight () {
-			let reducerSize = image.naturalWidth - canvas.width;
-			nextImageProps.width = canvas.width;
+		// Получение слоёв, идущих до и после текущего слоя
+		const downLayers = localLayersList.slice(0, layer);
+		const upperLayers = localLayersList.slice(layer, localLayersList.length);
 
-			let nextImageWidth = image.naturalWidth - reducerSize;
-			let nextImageHeight = image.naturalHeight - Math.round(reducerSize / relation.image);
+		// Отрисовка слоёв, идущих до текущего
+		for (const image of downLayers) if (image) drawImage(image);
+		drawImage(image); // Отрисовка содержимого текущего слоя
 
-			let marignTop = -(nextImageHeight - canvas.height);
-			return { height: nextImageHeight, width: nextImageWidth, top: marignTop, left: 0 };
-		}
-
-		function alignWithWidth () {
-			// Холст вытянут по высоте
-			// ! То, как вытянуто изображение, не имеет значения
-			// Если холст вытянут по высоте, то и изображение нужно вытягивать по высоте холста
-			/*  Высчитываем кол-во пикселей, на которые необходимо
-				изменить изображение по высоте, чтобы
-				подогнать его под размер холста  */
-			let reducerSize: number = image.naturalHeight - canvas.height;
-
-			// Высота картинки выстроенная по высоте холста. Размер уменьшен на reducerSize пикселей
-			// Размер будет увеличен, если в reducerSize отрицательный знак
-			let nextImageHeight = image.naturalHeight - reducerSize;
-			// nextImageProps.height = canvas.height; // canvas.height === nextImageHeight
-
-			// Теперь нужно вычислить ширину изображения на основе reducerSize и relation.image
-			let nextImageWidth = image.naturalWidth - Math.round(reducerSize * relation.image);
-
-			// Следующая ширина изображения может не подходить по размеру, необходимо добавить отступ
-			let marginLeft = -(nextImageWidth - canvas.width);
-			return { height: nextImageHeight, width: nextImageWidth, top: 0, left: marginLeft };
-		}
-
-		nextImageProps = alignWithHeight();
-		if (nextImageProps.height < canvas.height) nextImageProps = alignWithWidth();
-		if (relation.canvas < 2) {
-			nextImageProps = alignWithWidth();
-			if (nextImageProps.width < canvas.width) nextImageProps = alignWithHeight();
-		}
-
-		return nextImageProps;
+		for (const image of upperLayers) if (image) drawImage(image);
 	}
 }
 
@@ -177,10 +106,10 @@ window.addEventListener("load", async () => {
 	let core = new Core(420, 240);
 	document.body.append(core.canvasContext.canvas);
 
-	let image = new Image();
-	image.src = "1.jpg";
+	let top = core.Layers.Add();
 
-	image.addEventListener("load", function () {
-		core.DrawImage(this);
-	});
+	let image = await core.LoadImage("1.jpg");
+	image.alpha = 1;
+
+	core.DrawImage(image, top);
 });
