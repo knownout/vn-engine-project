@@ -97,10 +97,8 @@ export class ImageLoader {
 			return { height: nextImageHeight, width: nextImageWidth, top: 0, left: marginLeft };
 		}
 
-		/*
-            Выравниваем изображение по ширине или высоте а затем провярем, 
-            покрывает ли изображение всю площадь холста
-        */
+		/* 	Выравниваем изображение по ширине или высоте а затем провярем, 
+            покрывает ли изображение всю площадь холста  */
 		nextImageProps = alignWithHeight();
 		if (nextImageProps.height < canvas.height) nextImageProps = alignWithWidth();
 		if (relation.canvas < 2) {

@@ -12,7 +12,6 @@ const MODE =
 		return a;
 	}, {} as any).mode || "development";
 const IS_PROD = MODE === "production" ? true : false;
-if (IS_PROD) fs.readdirSync("./dist").forEach(e => fs.unlinkSync(`./dist/${e}`));
 
 module.exports = {
 	target: "web",
