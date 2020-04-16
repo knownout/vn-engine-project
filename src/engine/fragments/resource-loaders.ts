@@ -1,13 +1,5 @@
-type ImagePosition = "top" | "center" | "bottom";
-export interface IImageElement {
-	html: HTMLImageElement;
-	alpha: number;
-
-	width: number;
-	height: number;
-	top: number;
-	left: number;
-}
+import { ImageObject } from "./objects";
+type ImagePosition = "top" | "center" | "bottom" | number;
 
 export class ImageLoader {
 	constructor (private canvasContext: CanvasRenderingContext2D) {}
@@ -15,11 +7,12 @@ export class ImageLoader {
 	// Асинхронная загрузка изображения
 	public LoadImage (
 		imageURL: string,
-		center: {
+		options?: Partial<{
 			vertical: ImagePosition;
 			horizontal: ImagePosition;
-		} = { horizontal: "center", vertical: "center" }
-	): Promise<IImageElement> {
+			alpha: number;
+		}>
+	): Promise<ImageObject> {
 		// Создание нового изображения из ссылки
 		const imageElement = new Image();
 		imageElement.src = imageURL;
@@ -29,20 +22,39 @@ export class ImageLoader {
 				// Получение необходимых размеров и отступов для текущего изображения
 				const { width, height, ...margins } = this.calculateImageCoverSize(imageElement);
 
-				// Функция для получение оступов относительно заданного позиционирования
-				const realMargin = (type: "vertical" | "horizontal") =>
-					center[type] == "top"
-						? 0
-						: center[type] == "center"
-							? margins[type == "vertical" ? "left" : "top"] / 2
-							: margins[type == "vertical" ? "left" : "top"];
-
-				// Запись отступов в переменные (для упрощённой записи в resolve)
-				const { top, left } = {
-					top: realMargin("horizontal"),
-					left: realMargin("vertical")
+				// Установка стандартных значений для аргумента options
+				const preferences = options || {
+					alpha: 1,
+					horizontal: "center",
+					vertical: "center"
 				};
-				resolve({ html: imageElement, height, width, top, left, alpha: 1 });
+
+				type T = "vertical" | "horizontal" | "alpha";
+				for (const key of [ "vertical", "horizontal", "alpha" ]) {
+					if (preferences[key as T] === undefined) {
+						if (key == "alpha") preferences[key] = 1;
+						else preferences[key as Exclude<T, "alpha">] = "center";
+					}
+				}
+				// Функция для получение оступов относительно заданного позиционирования
+				const getRealMargin = (type: "vertical" | "horizontal") =>
+					typeof preferences[type] === "number"
+						? preferences[type] as number
+						: preferences[type] == "top"
+							? 0
+							: preferences[type] == "center"
+								? margins[type == "vertical" ? "left" : "top"] / 2
+								: margins[type == "vertical" ? "left" : "top"];
+
+				resolve(
+					new ImageObject(imageElement, {
+						width,
+						height,
+						left: getRealMargin("vertical"),
+						top: getRealMargin("horizontal"),
+						alpha: 1
+					})
+				);
 			});
 
 			// При ошибке загрузки изображения возвращается ошибка

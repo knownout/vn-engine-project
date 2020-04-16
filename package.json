@@ -1,8 +1,8 @@
 {
-	"name": "react-playground",
+	"name": "vn-engine-project",
 	"version": "1.0.0",
-	"description": "React playground",
-	"main": "src/main.tsx",
+	"description": "Visual Novel Engine project",
+	"main": "src/main.ts",
 	"author": "re-knownout",
 	"license": "MIT",
 	"devDependencies": {
