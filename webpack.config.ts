@@ -86,7 +86,7 @@ module.exports = {
 		// hot: true,
 		writeToDisk: true, // default: IS_PROD
 		historyApiFallback: true,
-		contentBase: path.resolve("dist"),
+		contentBase: path.resolve("images"),
 		publicPath: "/",
 
 		https: {
