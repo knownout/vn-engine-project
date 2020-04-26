@@ -1,7 +1,11 @@
 import "normalize.css";
 import "./styles.less";
 
-import Engine from "./engine";
+import CoreOfDrawing from "./drawing-core";
+
 window.addEventListener("load", async () => {
-	const engine = new Engine(document.querySelector("#root") as HTMLElement);
+	const root = document.querySelector("div#root") as HTMLElement;
+	const core = new CoreOfDrawing(window.innerWidth, window.innerHeight);
+
+	root.append(core.canvasContext.canvas);
 });
