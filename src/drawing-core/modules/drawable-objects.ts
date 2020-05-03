@@ -5,24 +5,181 @@
     отрисовываемых на холсте элементов
 */
 
-/** Тип для координат точки на холсте (x, y) */
-type Point = [number, number];
-
-/** Объединение всех возможный типов стиля объектов холста */
-type CanvasStyles = string | CanvasGradient | CanvasPattern;
+/** Составной тип для обозначения стиля отрисовки объекта на холсте */
+type CanvasStyle = string | CanvasGradient | CanvasPattern;
+/** Составной тип для обозначения всех объектов, которые могут быть отрисованы на холсте */
+export type Drawable = Rect | Circle | Ellipse | Text | Picture;
 
 /*
-    Системные (не экспортируемые) классы и классы объектов
+
+	Базовые классы, содержащие общие свойства для объектов
+	определенного типа (не экспортируются)
+
 */
 
-// Класс, содержащий свойства тени объектов
-export class Shadow {
+/**
+ * Базовый класс, содержащий стили заполнения и контура фигуры, а 
+ * также значение альфа-канала (прозрачности) для текущего объекта
+ * и значение параметра вращения относительно собственного центра
+ */
+class DrawableObject {
+	private objectOffset: [number, number] = [ 0, 0 ];
+
+	private shapeRotation = 0;
+	private transparency = 1;
+	private shapeSize: [number, number];
+
+	private strokeStyle: CanvasStyle = "transparent";
+	private fillStyle: CanvasStyle = "transparent";
+
+	private parentObject: Drawable | null = null;
+
 	private shadowBlur: number = 0;
 	private shadowColor: string = "transparent";
 	private shadowOffset: [number, number] = [ 0, 0 ];
 
+	constructor (width: number, height: number) {
+		this.shapeSize = [ width, height ];
+	}
+
+	/** Метод получения отступа объекта от левого верхнего края холста */
+	getOffset = () => this.objectOffset;
+
+	/** Метод получения значения параметра вращения фигуры относительно собственного 
+	 * центра в радианах */
+	getRotation = () => this.shapeRotation;
+	/** Метод получения значения параметра прозрачности (альфа-канала) текущего объекта */
+	getTransparency = () => this.transparency;
+	/** Метод получения значений размеров фигуры (ширины и высоты) */
+	getSize = () => this.shapeSize;
+
+	/** Метод получения значения стилей заполнения и контура фигуры */
+	getStyles = () => [ this.fillStyle, this.strokeStyle ] as [CanvasStyle, CanvasStyle];
+	/** Метод получения значения стиля контура фигуры */
+	getStrokeStyle = () => this.strokeStyle;
+	/** Метод получения значения стиля заполнения фигуры */
+	getFillStyle = () => this.fillStyle;
+
+	/** Метод для получения родительского объекта */
+	getParentObject = () => this.parentObject;
+
 	/** Метод для получения значения отступа тени относительн объекта */
 	getShadowOffset = () => this.shadowOffset;
+
+	/** Метод для получения значения параметра цвета тени */
+	getShadowColor = () => this.shadowColor;
+
+	/** Метод для получения значения параметра размытия тени */
+	getShadowBlur = () => this.shadowBlur;
+
+	/**
+	 * Метод изменения значения текущей координаты объекта по оси X
+	 * @param x координата по оси X
+	 */
+	setCoordinateX (x: number) {
+		this.objectOffset[0] = x;
+		return this;
+	}
+
+	/**
+	 * Метод изменения значения текущей координаты объекта по оси Y
+	 * @param y координата по оси Y
+	 */
+	setCoordinateY (y: number) {
+		this.objectOffset[1] = y;
+		return this;
+	}
+
+	/**
+	 * Метод изменения значения текущего отступа объекта от левого верхнего угла холста
+	 * @param x отсутп по оси X
+	 * @param y отступ по оси Y
+	 */
+	setOffset (x: number, y: number) {
+		return this.setCoordinateX(x).setCoordinateY(y);
+	}
+
+	/**
+	 * Метод изменения значения параметра прозрачности (альфа-канала) текущего объекта
+	 * @param transparency значение параметра прозрачности
+	 */
+	setTransparency (transparency: number) {
+		this.transparency = transparency < 0 ? 0 : transparency > 1 ? 1 : transparency;
+		return this;
+	}
+
+	/**
+	 * Метод изменения значения параметра вращения фигуры относительно собственного центра
+	 * в градусах
+	 * @param rotation вращение относительно собственного центра
+	 */
+	setRotation (rotation: number) {
+		this.shapeRotation = rotation * (Math.PI / 180);
+		return this;
+	}
+
+	/**
+	 * Метод для изменения значений размеров отрисовываемой фигуры
+	 * @param width значение ширины фигуры
+	 * @param height значение высоты
+	 */
+	setSize (width: number, height: number) {
+		return this.setWidth(width).setHeight(height);
+	}
+
+	/**
+	 * Метод изменения значения ширины отрисовываемой фигуры
+	 * @param width значение ширины фигуры
+	 */
+	setWidth (width: number) {
+		this.shapeSize[0] = width;
+		return this;
+	}
+
+	/**
+	 * Метод изменения значения высоты отрисовываемой фигуры
+	 * @param height значение высоты фигуры
+	 */
+	setHeight (height: number) {
+		this.shapeSize[1] = height;
+		return this;
+	}
+
+	/**
+	 * Метод изменения значения стилей заполнения и контура фигуры
+	 * @param fillStyle стиль заполнения текущей фигуры
+	 * @param strokeStyle стиль контура фигуры
+	 */
+	setStyles (fillStyle: CanvasStyle, strokeStyle: CanvasStyle) {
+		return this.setFillStyle(fillStyle).setStrokeStyle(strokeStyle);
+	}
+
+	/**
+	 * Метод изменения значения стиля контура фигуры
+	 * @param strokeStyle стиль контура
+	 */
+	setStrokeStyle (strokeStyle: CanvasStyle) {
+		this.strokeStyle = strokeStyle;
+		return this;
+	}
+
+	/**
+	 * Метод изменения значения стиля заполнения фигуры
+	 * @param strokeStyle стиль заполнения
+	 */
+	setFillStyle (fillStyle: CanvasStyle) {
+		this.fillStyle = fillStyle;
+		return this;
+	}
+
+	/**
+	 * Метод для изменения родительского объекта (для изменения привязки текущего объекта)
+	 * @param object родительский объект
+	 */
+	setParentObject (object: Drawable | null) {
+		this.parentObject = object;
+		return this;
+	}
 
 	/**
 	 * Метод для изменения значения отступа тени относительно объекта
@@ -34,9 +191,6 @@ export class Shadow {
 		return this;
 	}
 
-	/** Метод для получения значения параметра цвета тени */
-	getShadowColor = () => this.shadowColor;
-
 	/**
 	 * Метод для изменения значения параметра цвета тени
 	 * @param color цвет тени
@@ -45,9 +199,6 @@ export class Shadow {
 		this.shadowColor = color;
 		return this;
 	}
-
-	/** Метод для получения значения параметра размытия тени */
-	getShadowBlur = () => this.shadowBlur;
 
 	/**
 	 * Метод для получения значения параметра размытия тени
@@ -67,299 +218,238 @@ export class Shadow {
 	 * @param y отсутп по оси Y
 	 */
 	setShadow (color: string, blur: number, offsetX?: number | null, offsetY?: number) {
-		this.shadowColor = color;
-		this.shadowBlur = blur;
-
 		if (offsetX) this.shadowOffset[0] = offsetX;
 		if (offsetY) this.shadowOffset[1] = offsetY;
+
+		return this.setShadowColor(color).setShadowBlur(blur);
 	}
 }
 
-// Класс, содержащий свойтва родительского объекта
-export class Relation extends Shadow {
-	private parentObject: Drawable | null = null;
+/**
+ * Базовый класс, содержащий следующие общие параметры окржуностей: 
+ * направление отрисовки (по или против часовой стрелки), 
+ * углы начала и конца дуги. Расширят базовый класс DrawableObject
+ */
+class RoundDrawableObject extends DrawableObject {
+	private anglesList: [number, number] = [ 0, Math.PI * 2 ];
+	private clockwiseDirection = true;
 
-	/** Метод для получения родительского объекта */
-	getParentObject = () => this.parentObject;
+	/** Метод получения значения углов начала и конца дуги в радианах */
+	getAngles = () => this.anglesList;
+	/** Метод получения значения параметра направления отрисовки дуги */
+	getDirection = () => this.clockwiseDirection;
 
 	/**
-	 * Метод для изменения родительского объекта (для изменения привязки текущего объекта)
-	 * @param object родительский объект
+	 * Метод изменения значения углов начала и конца дуги в градусах
+	 * @param startAngle начальный угол дуги
+	 * @param endAngle конечный угол
 	 */
-	setParentObject (object: Drawable | null) {
-		this.parentObject = object;
-		return this;
+	setAngles (startAngle: number, endAngle: number) {
+		return this.setStartAngle(startAngle).setEndAngle(endAngle);
 	}
-}
 
-// Класс, содержащий свойства стилей объектов холста
-class DrawableObject extends Relation {
-	private fillStyle: CanvasStyles = "#111";
-	private strokeStyle: CanvasStyles = "transparent";
-	private transparency: number = 1;
-	private offset: [number, number] = [ 0, 0 ];
-
-	/** Метод для изменения стиля заливки текущего объекта холста */
-	setFillStyle (fillStyle: CanvasStyles) {
-		this.fillStyle = fillStyle;
+	/**
+	 * Метод изменения значения начального угла дуги в градусах
+	 * @param startAngle начальный угол
+	 * а не в радианах
+	 */
+	setStartAngle (startAngle: number) {
+		this.anglesList[0] = startAngle * (Math.PI / 180);
 		return this;
 	}
 
-	/** Метод для изменения стиля контура текущего объекта холста */
-	setStrokeStyle (strokeStyle: CanvasStyles) {
-		this.strokeStyle = strokeStyle;
+	/**
+	 * Метод изменения значения конечного угла дуги в градусах
+	 * @param endAngle конечный угол
+	 * а не в радианах
+	 */
+	setEndAngle (endAngle: number) {
+		this.anglesList[1] = endAngle * (Math.PI / 180);
 		return this;
 	}
 
-	/** 
-     * Метод для изменения уровня прозрачности текущего объекта холста 
-     * @param transparency уровень прозрачности объекта (от 1 до 0)
+	/**
+     * Метод изменения значения параметра направления отрисовки дуги
+     * @param clockwiseDirection если true, отрисовывается по часовой стрелке 
+     * (true по умолчанию)
      */
-	setTransparency (transparency: number) {
-		this.transparency = transparency > 1 ? 1 : transparency < 0 ? 0 : transparency;
-		return this;
-	}
-
-	/**
-     * Метод для изменения стиля заливки и стиля контура объектов холста
-     * @param fillStyle стиль заливки объекта
-     * @param strokeStyle стиль конура холста
-     */
-	setStyle (fillStyle: CanvasStyles, strokeStyle: CanvasStyles) {
-		this.fillStyle = fillStyle;
-		this.strokeStyle = strokeStyle;
-		return this;
-	}
-
-	/** Метод для получения значения прозрачности объекта холста */
-	getTransparency = () => this.transparency;
-
-	/** Метод для получения значения стиля заливки объекта холста */
-	getFillStyle = () => this.fillStyle;
-
-	/** Метод для получения значения стиля контура объекта холста */
-	getStrokeStyle = () => this.strokeStyle;
-
-	/** Метод для получения значения отступа объекта от верхнего левого угла холста (X и Y) */
-	getOffset = () => this.offset;
-
-	/**
-	 * Метод для изменения значений отступа объекта от верхнего левого угла холста (X и Y)
-	 * @param x отступ объекта по координате "X"
-	 * @param y отступ объекта по "Y"
-	 */
-	setOffset (x: number, y: number) {
-		this.offset = [ x, y ];
-		return this;
-	}
-
-	/**
-	 * Мето для изменения значения отсутпа объекта от верхнего левого угла холста по координате X
-	 * @param x координата отступа
-	 */
-	setOffsetX (x: number) {
-		this.offset[0] = x;
-		return this;
-	}
-
-	/**
-	 * Мето для изменения значения отсутпа объекта от верхнего левого угла холста по координате Y
-	 * @param y координата отступа
-	 */
-	setOffsetY (y: number) {
-		this.offset[1] = y;
+	setDirection (clockwiseDirection: boolean) {
+		this.clockwiseDirection = clockwiseDirection;
 		return this;
 	}
 }
 
 /*
-    Основные (экспортируеме) классы объектов 
+
+	Классы для базовых отрисовываемых на холсте фигур
+
 */
 
-export class Path extends DrawableObject {
-	private path: Point[];
-
-	/**
-     * Класс для создания элемента пути (ломанной линии)
-     * @param path Набор точек пути (REST)
-     */
-	constructor (...path: Point[]) {
-		super();
-		this.path = path;
-	}
-
-	/** Метод для получения всех точек пути */
-	getPath = () => this.path;
-
-	/**
-	 * Метод для изменения (замены) массива точек пути
-	 * @param path массив точек пути
-	 * 
-	 * Данный метод не вызывает функцию перерисовки холста, чтобы
-	 * изменения вступили в силу необходимо вызвать перерисовку
-	 * холста вручную или заново отрисовать данный слой
+/**
+ * Класс прямоугольника, содержит дополнительные 
+ * параметры ширины и высоты фигуры
+ */
+export class Rect extends DrawableObject {
+	/** 
+	 * @param width Ширина отрисовываемой фигуры 
+	 * @param height Высота фигуры
 	 */
-	setPath (...path: Point[]) {
-		this.path = path;
-		return this;
+	constructor (width: number, height: number) {
+		super(width, height);
 	}
 }
-export class Circle extends DrawableObject {
-	/**
-     * Класс для создания объекта окружности
-     * @param radius радиус окружности
-     * @param angleFrom начальный угол окружности
-     * @param angleTo конечный угол
-     * @param antiClockwise против часовой стрелки
+
+/**
+ * Класс создания объекта изображения на основе объекта прямоугольника 
+ * (объект изображения расширяет объект прямоугольника) 
+ */
+export class Picture extends Rect {
+	/** 
+     * @param bitmap данные объекта изображения (изображение) из заранее загруженного изображения
+     * @param height высота изображения (задаётся автоматически)
+     * @param width ширины изображения (задаётся автоматически)
      */
-	constructor (
-		private radius: number,
-		private angleFrom: number,
-		private angleTo: number,
-		private antiClockwise: boolean
-	) {
-		super();
+	constructor (public readonly bitmap: ImageBitmap, width: number, height: number) {
+		super(width, height);
+	}
+}
+
+/**
+ * Класс круга, расширяет базовый класс RoundDrawableObject
+ * дополнительным параметром радиуса фигуры
+ */
+export class Circle extends RoundDrawableObject {
+	/** @param radius радиус окружности */
+	constructor (private radius: number) {
+		super(radius * 2, radius * 2);
 	}
 
-	/** Метод для получения значения радиуса окружности */
+	/** Метод получения значения радиуса текущей фигуры в радианах */
 	getRadius = () => this.radius;
 
-	/** 
-     * Метод для изменения значения радиуса 
-     * @param radius радиус оуружности
-	 * 
-	 * Данный метод не вызывает функцию перерисовки холста, чтобы
-	 * изменения вступили в силу необходимо вызвать перерисовку
-	 * холста вручную или заново отрисовать данный слой
+	/**
+	 * Метод изменения значения радиуса текущей фигуры
+	 * @param radius радиус фигуры
 	 */
 	setRadius (radius: number) {
 		this.radius = radius;
 		return this;
 	}
+}
 
-	/** Метод для получения значения начального и конечного углов окружности */
-	getAngles = () => [ this.angleFrom, this.angleTo ];
-
-	/** 
-     * Метод для изменения значения начального и конечного углов окружности 
-     * @param from начальный угол окружности
-     * @param to конечный угол
-	 * 
-	 * Данный метод не вызывает функцию перерисовки холста, чтобы
-	 * изменения вступили в силу необходимо вызвать перерисовку
-	 * холста вручную или заново отрисовать данный слой
-	 */
-	setAngles (from: number, to: number = Math.PI * 2) {
-		this.angleFrom = from;
-		this.angleTo = to;
-		return this;
+/**
+ * Класс эллипса (овала), расширяет базовый класс RoundDrawableObject
+ * дополнительными параметром радиусов (по X и Y), а также
+ * перезаписывает метод setRotation базового класса DrawableObject
+ */
+export class Ellipse extends RoundDrawableObject {
+	constructor (private radiusX: number, private radiusY: number) {
+		super(radiusX * 2, radiusY * 2);
 	}
 
-	/** Метод для получения значения параметра стороны отрисовки */
-	getAntiClockwise = () => this.antiClockwise;
+	/** Метод получения значений радиусов (по X и Y) эллипса */
+	getRadii = () => [ this.radiusX, this.radiusY ] as [number, number];
 
 	/**
-	 * Метод для изменения значения параметра стороны отрисовки
-	 * @param antiClockwise если true, то отрисовка против часовой стрелки
-	 * 
-	 * Данный метод не вызывает функцию перерисовки холста, чтобы
-	 * изменения вступили в силу необходимо вызвать перерисовку
-	 * холста вручную или заново отрисовать данный слой
+	 * Метод изменения значений радиусов фигуры по обеим осям
+	 * @param radiusX радиус по оси X
+	 * @param radiusY радиус по оси Y
 	 */
-	setAntiClockwise (antiClockwise: boolean) {
-		this.antiClockwise = antiClockwise;
-		return this;
+	setRadii (radiusX: number, radiusY: number) {
+		return this.setRadiusX(radiusX).setRadiusY(radiusY);
 	}
-}
-export class Rect extends DrawableObject {
+
 	/**
-     * Класс для создания объекта прямоугольника фиксированного размера
-     * @param width ширина прямоугольника
-     * @param height высота прямоугольника
-     */
-	constructor (private width: number, private height: number) {
-		super();
-	}
-
-	/** Метод для изменения значения параметра ширины прямоугольника */
-	setWidth (width: number) {
-		this.width = width;
+	 * Метод изменения значения радиуса фигуры про оси X
+	 * @param radiusX радиус по оси X
+	 */
+	setRadiusX (radiusX: number) {
+		this.radiusX = radiusX * (Math.PI / 180);
 		return this;
 	}
 
-	/** Метод для изменения значения параметра высоты прямоугольника */
-	setHeight (height: number) {
-		this.height = height;
-		return this;
-	}
-
-	/** Метод для получения значений параметров ширины и высоты прямоугольника */
-	getSize = () => [ this.width, this.height ] as [number, number];
-
-	/** Метод для изменения значений параметров ширины и высоты */
-	setSize (width: number, height: number) {
-		this.width = width;
-		this.height = height;
+	/**
+	 * Метод изменения значения радиуса фигуры про оси Y
+	 * @param radiusY радиус по оси Y
+	 */
+	setRadiusY (radiusY: number) {
+		this.radiusY = radiusY * (Math.PI / 180);
 		return this;
 	}
 }
-export class Picture extends Rect {
-	/** 
-     * Класс для создания объекта изображения на основе объекта прямоугольника 
-     * (объект изображения расширяет объект прямоугольника) 
-     * 
-     * @param bitmap данные объекта изображения (изображение) из заранее загруженного изображения
-     * @param height высота изображения (задаётся автоматически)
-     * @param width ширины изображения (задаётся автоматически)
-     */
 
-	constructor (public readonly bitmap: ImageBitmap, width: number, height: number) {
-		super(width, height);
-	}
-}
+/**
+ * Класс текста, содержит дополнительные
+ * параметры шрифта (размер и семейтво) и
+ * максимальной ширины строки, а также позвоялет
+ * создавать многострочные текстовые блоки
+ */
 export class Text extends DrawableObject {
-	private maxWidth: number = window.innerWidth;
-	private lineWidth: number = 16;
-	private baseline: CanvasTextBaseline = "alphabetic";
-	private align: CanvasTextAlign = "left";
+	private textLines: string[] = [];
+	private fontSize = 16;
+	private fontFamily = "Arial";
+	private maxWidth = window.innerWidth || -1;
 
-	/**
-     * Класс для создания лбъекта текста
-     * @param text текст, который будет отрисован на холсте
-     * @param fontSize размер шрифта текста
-     * @param fontFamily семейство шрифтов текста
-	 * 
-	 * Данный метод не вызывает функцию перерисовки холста, чтобы
-	 * изменения вступили в силу необходимо вызвать перерисовку
-	 * холста вручную или заново отрисовать данный слой
-	 */
-	constructor (private text: string[], private fontSize = 16, private fontFamily = "Arial") {
-		super();
+	/** @param textLines одна или несколько строк текста */
+	constructor (...textLines: string[]) {
+		super(0, 0);
+		this.setText(...textLines);
 	}
 
-	/** Метод для получения текста */
-	getText = () => this.text;
+	/** Метод построчного получения текста */
+	getText = () => this.textLines;
+	/** Метод получения значения параметров размера и семейтва шрифта */
+	getFont = () => [ this.fontSize, this.fontFamily ] as [number, string];
+	/** Метод получения значения максимальной ширины строки */
+	getMaxWidth = () => this.maxWidth;
 
 	/**
-     * Метод для изменения отображаемого текста
-     * @param text отображаемый текст
-	 * 
-	 * Данный метод не вызывает функцию перерисовки холста, чтобы
-	 * изменения вступили в силу необходимо вызвать перерисовку
-	 * холста вручную или заново отрисовать данный слой
+	 * Метод изменения текста и перерассчёта размера объекта на основе
+	 * заданных данных о размере шрифта и тексте
+	 * @param textLines одна или несколько линий текста
 	 */
-	setText (text: string[]) {
-		this.text = text;
+	setText (...textLines: string[]) {
+		this.textLines = textLines;
+
+		const localCanvasContext = document
+			.createElement("canvas")
+			.getContext("2d") as CanvasRenderingContext2D;
+
+		const textHeight = textLines.length * this.fontSize + textLines.length * 2;
+		const textWidth = localCanvasContext.measureText(
+			textLines.reduce((a, b) => (a.length > b.length ? a : b), "")
+		).width;
+
+		return this.setSize(textWidth, textHeight);
+	}
+
+	/**
+	 * Метод изменения значения параметров размера и семейтва шрифта
+	 * @param fontSize размер шрифта в пикселях
+	 * @param fontFamily название семейства шрифта с дополнительными
+	 * параметрами
+	 */
+	setFont (fontSize: number, fontFamily: string) {
+		this.fontFamily = fontFamily;
+		this.fontSize = fontSize;
+
+		// Если изменилось семейство шрифта или размер, изменился и размер объекта
+		return this.setText(...this.textLines);
+	}
+
+	/**
+	 * Метод изменения значения параметра семейтва шрифта
+	 * @param fontFamily название семейства шрифта с дополнительными
+	 * параметрами ("Arial" по умолчанию)
+	 */
+	setFontFamily (fontFamily: string) {
+		this.fontFamily = fontFamily;
 		return this;
 	}
 
 	/**
-     * Метод для изменения размера шрифта текста
-     * @param fontSize размер шрифта
-	 * 
-	 * Данный метод не вызывает функцию перерисовки холста, чтобы
-	 * изменения вступили в силу необходимо вызвать перерисовку
-	 * холста вручную или заново отрисовать данный слой
+	 * Метод изменения значения параметра размера шрифта
+	 * @param fontSize размер шрифта в пикселях (16 по умолчанию)
 	 */
 	setFontSize (fontSize: number) {
 		this.fontSize = fontSize;
@@ -367,99 +457,12 @@ export class Text extends DrawableObject {
 	}
 
 	/**
-     * Метод для изменения семейства шрифтов текста
-     * @param fontFamily семейство шрифтов
-	 * 
-	 * Данный метод не вызывает функцию перерисовки холста, чтобы
-	 * изменения вступили в силу необходимо вызвать перерисовку
-	 * холста вручную или заново отрисовать данный слой
-	 */
-	setFontFamily (fontFamily: string) {
-		this.fontFamily = fontFamily;
-		return this;
-	}
-
-	/** Метод для получения параметров шрифта текста */
-	getFont = () => [ this.fontSize, this.fontFamily ] as [number, string];
-
-	/**
-     * Метод, объедениющий setFontSize и setFamilySize
-     * @param fontSize размер шрифта
-     * @param fontFamily семейство шрифтов
-	 * 
-	 * Данный метод не вызывает функцию перерисовки холста, чтобы
-	 * изменения вступили в силу необходимо вызвать перерисовку
-	 * холста вручную или заново отрисовать данный слой
-	 */
-	setFont (fontSize: number, fontFamily: string) {
-		this.fontSize = fontSize;
-		this.fontFamily = fontFamily;
-		return this;
-	}
-
-	/** Метод для получения максимальной ширины текста */
-	getMaxWidth = () => this.maxWidth;
-
-	/**
-     * Метод для изменения значения максимальной ширины текста
-     * @param maxWidth максимальная ширина в пикселях
-	 * 
-	 * Данный метод не вызывает функцию перерисовки холста, чтобы
-	 * изменения вступили в силу необходимо вызвать перерисовку
-	 * холста вручную или заново отрисовать данный слой
+	 * Метод изменения значения максимальной ширины строки
+	 * @param maxWidth максимальная ширина строки в пикселях 
+	 * (по умолчанию - ширина текущего окна или -1)
 	 */
 	setMaxWidth (maxWidth: number) {
 		this.maxWidth = maxWidth;
 		return this;
 	}
-
-	/** Метод для получения ширины линии текста */
-	getLineWidth = () => this.lineWidth;
-
-	/**
-     * Метод для изменения значения ширины линии
-     * @param lineWidth ширина линии
-	 * 
-	 * Данный метод не вызывает функцию перерисовки холста, чтобы
-	 * изменения вступили в силу необходимо вызвать перерисовку
-	 * холста вручную или заново отрисовать данный слой
-	 */
-	setLineWidth (lineWidth: number) {
-		this.lineWidth = lineWidth;
-		return this;
-	}
-
-	/** Метод для получения значения параметра baseline текста */
-	getBaseline = () => this.baseline;
-
-	/**
-	 * Метод для изменения значения параметра baseline текста
-	 * @param baseline значение параметра baseline
-	 * 
-	 * Данный метод не вызывает функцию перерисовки холста, чтобы
-	 * изменения вступили в силу необходимо вызвать перерисовку
-	 * холста вручную или заново отрисовать данный слой
-	 */
-	setBaseline (baseline: CanvasTextBaseline) {
-		this.baseline = baseline;
-		return this;
-	}
-
-	/** Метод для получения выравнивания текста */
-	getAlign = () => this.align;
-
-	/**
-     * Метод для изменения выравнивания текста
-     * @param align тип выравнивания
-	 * 
-	 * Данный метод не вызывает функцию перерисовки холста, чтобы
-	 * изменения вступили в силу необходимо вызвать перерисовку
-	 * холста вручную или заново отрисовать данный слой
-	 */
-	setAlign (align: CanvasTextAlign) {
-		this.align = align;
-		return this;
-	}
 }
-
-export type Drawable = Path | Circle | Rect | Text | Picture;

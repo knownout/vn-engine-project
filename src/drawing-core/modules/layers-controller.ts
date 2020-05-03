@@ -1,5 +1,4 @@
 import { Drawable } from "./drawable-objects";
-import Person from "./person-class";
 
 export class Layer {
 	// Отступ от верхнего левого края холста (в пикселях)
@@ -11,7 +10,7 @@ export class Layer {
 
 	constructor (
 		private redrawFunction: () => void,
-		private readonly itemsList: (Drawable | Person | null)[] = []
+		private readonly itemsList: (Drawable | null)[] = []
 	) {}
 
 	/**
@@ -26,7 +25,7 @@ export class Layer {
 	 * Данный метод автоматически вызывает функцию перерисовки холста. Изменения
 	 * вступят в силу сразу после выполнения метода
 	 */
-	Draw (...objects: (Drawable | Person)[]) {
+	Draw (...objects: Drawable[]) {
 		for (const object of objects) {
 			if (this.itemsList.includes(object))
 				this.itemsList.splice(this.itemsList.indexOf(object), 1);
