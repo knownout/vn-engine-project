@@ -1,72 +1,57 @@
-import webpack = require("webpack");
-import server = require("webpack-dev-server");
+// Webpack modules import
+import Webpack from "webpack";
+import WebpackDevServer from "webpack-dev-server";
 
+// Webpack plugins require
+import UglifyJsPlugin = require("uglifyjs-webpack-plugin");
+import OptimizeCSSAssetsPlugin = require("optimize-css-assets-webpack-plugin");
+import MiniCssExtractPlugin = require("mini-css-extract-plugin");
 import HtmlWebpackPlugin = require("html-webpack-plugin");
-import path = require("path");
-import fs = require("fs");
 
-const MODE =
-	(process.env.npm_lifecycle_script as string).toString().split(" ").reduce((a, e) => {
-		const map = e.split("=").map(e => e.replace(/(\"|\-\-)/g, ""));
-		if (typeof map[1] !== "undefined") a[map[0]] = map[1];
-		return a;
-	}, {} as any).mode || "development";
-const IS_PROD = MODE === "production" ? true : false;
+// Common node module functions import
+import { readFileSync } from "fs";
+import { resolve } from "path";
 
+/*
+	Webpack preferences
+*/
+const serverPreferences = defaultServerConfiguration({ contentBase: "public", https: false });
+const distPath = "dist";
+const entryPoints = {
+	main: "./src/main.tsx"
+};
+
+// Webpack configuration
 module.exports = {
 	target: "web",
-	mode: MODE,
+	mode: "development",
 
-	devtool: IS_PROD ? undefined : "eval-source-map",
+	devtool: "eval-source-map",
 	resolve: { extensions: [ ".ts", ".js", ".tsx", ".jsx" ] },
 
 	parallelism: 4,
-	entry: {
-		main: "./src/main.ts"
-	},
-
-	optimization: IS_PROD
-		? {
-				minimize: true,
-				splitChunks: {
-					chunks: "all",
-					maxAsyncRequests: 16,
-					maxInitialRequests: 20,
-					cacheGroups: {
-						vendor: {
-							test: /[\\/]node_modules[\\/]/,
-							name (module) {
-								const packageName = module.context.match(
-									/[\\/]node_modules[\\/](.*?)([\\/]|$)/
-								)[1];
-								return `module~${packageName.replace("@", "~")}`;
-							}
-						}
-					}
-				},
-				providedExports: true,
-				concatenateModules: true,
-				usedExports: true,
-				removeAvailableModules: true
-			}
-		: undefined,
+	entry: entryPoints,
 
 	output: {
-		filename: "[name].bundle.js",
-		path: path.resolve(__dirname, "dist")
+		filename: "js/[name].js",
+		path: resolve(distPath)
 	},
 
 	module: {
 		rules: [
 			{
-				test: /\.css$/,
-				use: [ "style-loader", "css-loader", "postcss-loader" ]
-			},
-			{ test: /\.tsx?$/, loader: "ts-loader" },
-
-			{
 				test: /\.less$/g,
-				loaders: [ "style-loader", "css-loader", "postcss-loader", "less-loader" ]
+				loaders: [
+					MiniCssExtractPlugin.loader,
+					"css-loader",
+					"postcss-loader",
+					"less-loader"
+				]
+			},
+			{ test: /\.tsx?$/, loader: "ts-loader", exclude: resolve("tests") },
+			{
+				test: /\.css$/,
+				use: [ MiniCssExtractPlugin.loader, "css-loader", "postcss-loader" ]
 			}
 		]
 	},
@@ -76,22 +61,86 @@ module.exports = {
 			inject: true,
 			template: "./src/index.html",
 			filename: "index.html"
+		}),
+
+		new MiniCssExtractPlugin({
+			chunkFilename: "css/[id].css",
+			filename: "css/[name].css"
 		})
 	],
 
-	devServer: {
-		host: "0.0.0.0",
-		port: 8080,
+	optimization: {
+		minimize: true,
+		minimizer: [
+			new UglifyJsPlugin({
+				cache: true,
+				parallel: true,
+				sourceMap: true,
+				extractComments: false,
+				uglifyOptions: {
+					compress: true,
+					ie8: true,
+					output: { comments: false },
+					safari10: true
+				}
+			}),
+			new OptimizeCSSAssetsPlugin({
+				cssProcessorOptions: { discardComments: { removeAll: true } },
+				canPrint: true
+			})
+		],
 
-		// hot: true,
-		writeToDisk: true, // default: IS_PROD
+		splitChunks: {
+			chunks: "all",
+			maxAsyncRequests: 16,
+			maxInitialRequests: 20,
+
+			cacheGroups: {
+				vendor: {
+					test: /[\\/]node_modules[\\/]/,
+					name (module: any) {
+						const packageName = module.context.match(
+							/[\\/]node_modules[\\/](.*?)([\\/]|$)/
+						)[1];
+						return `module~${packageName.replace("@", "~")}`;
+					}
+				}
+			}
+		},
+
+		providedExports: true,
+		concatenateModules: true,
+		usedExports: true,
+		removeAvailableModules: true
+	},
+
+	devServer: serverPreferences
+} as Webpack.Configuration;
+
+function defaultServerConfiguration ({
+	host = "0.0.0.0",
+	port = 8080,
+	contentBase = null as string | null,
+	https = false
+}) {
+	const certificatesPath = "C:\\Users\\knownOut\\.certificates";
+	// const httpsConfiguration = {
+	// 	key: readFileSync(`${certificatesPath}\\localhost-key.pem`, "utf8"),
+	// 	cert: readFileSync(`${certificatesPath}\\localhost.pem`, "utf8")
+	// };
+
+	const configurationObject = {
+		host,
+		port,
+
+		writeToDisk: true,
 		historyApiFallback: true,
-		contentBase: path.resolve("images"),
-		publicPath: "/",
+		publicPath: "/"
+	};
 
-		https: {
-			cert: fs.readFileSync("C:\\Users\\knownOut\\.certificates\\localhost.pem", "utf8"),
-			key: fs.readFileSync("C:\\Users\\knownOut\\.certificates\\localhost-key.pem", "utf8")
-		}
-	} as server.Configuration
-} as webpack.Configuration;
+	return Object.assign(
+		contentBase ? { contentBase: resolve(contentBase) } : {},
+		// https ? { https: httpsConfiguration } : {},
+		configurationObject
+	) as WebpackDevServer.Configuration;
+}

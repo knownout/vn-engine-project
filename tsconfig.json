@@ -1,7 +1,11 @@
 {
     "exclude": [
-        "./webpack.config.ts",
-        "./dist"
+        "webpack.config.ts",
+        "dist/**",
+        "webpack/**",
+        "tests/**",
+        "jest.config.js",
+        "__jest__/**"
     ],
     "compilerOptions": {
         "incremental": true,
@@ -15,9 +19,10 @@
         // "checkJs": true,
         "jsx": "react",
         "declaration": false,
-        "sourceMap": false,
+        "sourceMap": true,
         "outDir": "./dist",
         "rootDir": "./src",
+        // "rootDirs": ["./src"],
         // "composite": true,
         "removeComments": true,
         // "importHelpers": true,
@@ -26,7 +31,7 @@
         // "noUnusedParameters": true,
         "noImplicitReturns": true,
         "noFallthroughCasesInSwitch": true,
-        "typeRoots": [],
+        "typeRoots": [ "node_modules/@types" ],
         "esModuleInterop": true,
         // "experimentalDecorators": true,
         // "emitDecoratorMetadata": true,

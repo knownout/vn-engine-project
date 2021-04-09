@@ -1,0 +1,11 @@
+{
+	"init": {
+		"images": {
+			"var-name-1": "dev/bg-street.png"
+		},
+
+		"characters": [ "dev/saki.chr" ]
+	},
+
+	"screen": []
+}

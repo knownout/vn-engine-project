@@ -1,0 +1,43 @@
+@import (css) url('https://fonts.googleapis.com/css2?family=Ubuntu:ital,wght@0,400;0,500;1,400;1,500&display=swap');
+
+body,
+html,
+main#main {
+	position: fixed;
+	display: block;
+
+	width: 100%;
+	height: 100%;
+
+	top: 0;
+	left: 0;
+	overflow: hidden;
+
+	font-family: 'Ubuntu', 'Arial', sans-serif;
+}
+
+div.main-screen {
+	position: absolute;
+	display: block;
+
+	width: 100%;
+	height: 100%;
+
+	top: 0;
+	left: 0;
+
+	background-color: #101010;
+	background: radial-gradient(#111, #000);
+
+	div.layer {
+		position: absolute;
+		display: block;
+
+		width: 100%;
+		height: 100%;
+
+		top: 0;
+		left: 0;
+		background: transparent;
+	}
+}
