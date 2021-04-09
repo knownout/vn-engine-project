@@ -1,5 +1,5 @@
 import JSZip from "jszip";
-import * as d from "./definition";
+import * as d from "./types";
 import { CoreMessagesList as ML } from "./messages";
 
 class Base64Image {
@@ -23,17 +23,20 @@ class Core {
 		return new NovelExecutableParseException(message.map(e => e.trim()).join(" ").trim());
 	}
 
-	constructor (novelExecutableFile: string, layersList: d.ILayersList<HTMLDivElement>) {
-		this.layersList = layersList;
-		const novelExecutableObject = this.parseNovelExecutableFile(novelExecutableFile);
-
-		this.processInitSector(novelExecutableObject.init).then(memory => {
-			this.processScreenSector(memory, novelExecutableObject.screen);
-		});
+	constructor (private readonly novelExecutableFile: string, wrapperLayer: HTMLDivElement) {
+		// TODO: Проверять, существуют ли элементы слоев
+		this.layersList = {
+			layersWrapperLayer: wrapperLayer,
+			backgroundLayer: wrapperLayer.querySelector(".layer.bg-layer") as HTMLDivElement,
+			controlsLayer: wrapperLayer.querySelector(".layer.controls-layer") as HTMLDivElement,
+			charactersLayer: wrapperLayer.querySelector(".layer.chr-layer") as HTMLDivElement
+		};
 	}
 
 	// Функция предварительной проверки исполняемого файла на наличие ошибок
-	private parseNovelExecutableFile (novelExecutableFile: string): d.INovelExecutableObject {
+	public parseNovelExecutableFile (): d.INovelExecutableObject {
+		const novelExecutableFile = this.novelExecutableFile;
+
 		// Преобразование данных JSON-строки в объект
 		const novelExecutableObject = JSON.parse(novelExecutableFile) as d.INovelExecutableObject;
 
@@ -87,7 +90,7 @@ class Core {
 	}
 
 	// Функция выполнения исходного кода сектора INIT
-	private async processInitSector (init: d.INovelExecutableObject.IInit): Promise<d.TInitResult> {
+	public async processInitSector (init: d.INovelExecutableObject.IInit): Promise<d.TInitResult> {
 		// Список загруженных изображений
 		const imagesList: { [key: string]: string }[] = [];
 
@@ -197,7 +200,7 @@ class Core {
 		return { imagesList, charactersList };
 	}
 
-	private async processScreenSector (memory: d.TInitResult, screen: d.INovelExecutableObject.IScreen) {
+	public async processScreenSector (memory: d.TInitResult, screen: d.INovelExecutableObject.IScreen) {
 		console.log(memory, screen);
 	}
 }

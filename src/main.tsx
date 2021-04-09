@@ -34,12 +34,7 @@ class ScreenVisualizerComponent extends React.Component {
 			req.text()
 		);
 
-		const core = new Core(novelExecutableFile, {
-			layersWrapperLayer: this.wrapperLayer.current as HTMLDivElement,
-			backgroundLayer: this.backgroundLayer.current as HTMLDivElement,
-			charactersLayer: this.charactersLayer.current as HTMLDivElement,
-			controlsLayer: this.controlsLayer.current as HTMLDivElement
-		});
+		const core = new Core(novelExecutableFile, this.wrapperLayer.current as HTMLDivElement);
 	}
 }
 
